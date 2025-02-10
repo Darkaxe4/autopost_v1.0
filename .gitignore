@@ -1,3 +1,4 @@
 *.env
 /venv/*
 /update_requirements
+*__pycache__
