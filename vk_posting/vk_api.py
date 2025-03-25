@@ -11,7 +11,7 @@ class vk_requester(singletone):
         super().__init__()
         if not self.initialized:
             self.loadconfig(path)
-            self.VK = vk_api.VkApi(token= self.auth_token, captcha_handler= self.captcha_handler)
+            self.VK = vk_api.VkApi(token= self.auth_token, captcha_handler= self.handleCaptcha)
             self.initialized = True
         return
 
@@ -31,11 +31,11 @@ class vk_requester(singletone):
         if not(args.auth_token is None):
             self.auth_token = args.auth_token
 
-    def captcha_handler(self, captcha):
+    def handleCaptcha(self, captcha):
         key = input("Enter captcha code {0}: ".format(captcha.get_rl())).strip()
         return captcha.try_again(key)
     
-    def WallClear(self):	
+    def wallClear(self):	
         while True:
             response = self.VK.method("wall.get", {"owner_id":self.community_id, "filter":'postponed'})
             items = response["items"]
@@ -44,7 +44,7 @@ class vk_requester(singletone):
             for item in items:
                 self.VK.method("wall.delete", {"owner_id":item["owner_id"], "post_id":item["id"]})
 
-    def WallFilteredClear(self, TargetString):
+    def wallFilteredClear(self, TargetString):
         while True:
             response = self.VK.method("wall.get", {"owner_id":self.community_id, "filter":'postponed'})
             items = response["items"]

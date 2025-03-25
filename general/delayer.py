@@ -1,29 +1,42 @@
 import asyncio
 from datetime import datetime, timedelta
 from typing import Callable
+from collections import defaultdict
 
-# Define a callback function
-def my_callback():
-    print(f"Callback executed at {datetime.now().timestamp()}")
+from general.logger import logger
+from general.utils import singletone
 
-class Delayer:
-    def __init__ (self):
+class Delayer(singletone):
+    def __init__(self):
         self.loop = asyncio.get_event_loop()
+        self.scheduled_tasks = defaultdict(list)
+        self.lock = asyncio.Lock()
+    
+    async def delayFunction(self, time: datetime, func: Callable, priority: int = 0):
+        async with self.lock:
+            now = self.loop.time()
+            timedelay = time - datetime.now()
+            timestamp = now + timedelay.total_seconds()
 
-    async def delayFunction(self, time:datetime, func:Callable):
-        now = self.loop.time()
-        timedelay = time - datetime.now()
-        timestamp = now + timedelay.total_seconds()
-        self.loop.call_at(timestamp, func)
+            self.scheduled_tasks[timestamp].append((priority, func))
+            self.scheduled_tasks[timestamp].sort(key=lambda x: -x[0])
 
-async def main():
+            self.loop.call_at(timestamp, self._execute_scheduled_tasks, timestamp)
+    
+    def _execute_scheduled_tasks(self, timestamp):
+        if timestamp in self.scheduled_tasks:
+            tasks = self.scheduled_tasks[timestamp]
+            for priority, func in tasks:
+                try:
+                    if asyncio.iscoroutinefunction(func):
+                        self.loop.create_task(func())
+                    else:
+                        func()
+                except Exception as e:
+                    logger.instance.log('Error executing scheduled task:', e)
+            del self.scheduled_tasks[timestamp]
 
-    bubylda = Delayer()
-    await bubylda.delayFunction(datetime.now()+timedelta(seconds=5), my_callback)
-
-    # Keep the event loop running for a while to allow the callback to execute
-    while True:
-        await asyncio.sleep(1)  # Wait longer than the scheduled time
-
-# Run the asyncio event loop
-asyncio.run(main())
+    async def cancelScheduled(self, time: datetime):
+        timestamp = self.loop.time() + (time - datetime.now()).total_seconds()
+        if timestamp in self.scheduled_tasks:
+            del self.scheduled_tasks[timestamp]
