@@ -5,12 +5,17 @@ from collections import defaultdict
 
 from general.logger import logger
 from general.utils import singletone
+from general.settings import DEBUG
 
-class Delayer(singletone):
+class delayer(singletone):
     def __init__(self):
-        self.loop = asyncio.get_event_loop()
-        self.scheduled_tasks = defaultdict(list)
-        self.lock = asyncio.Lock()
+        super().__init__()
+        if not self.initialized:
+            self.loop = asyncio.get_event_loop()
+            self.scheduled_tasks = defaultdict(list)
+            self.lock = asyncio.Lock()
+            self.initialized = True
+        return
     
     async def delayFunction(self, time: datetime, func: Callable, priority: int = 0):
         async with self.lock:
@@ -24,16 +29,18 @@ class Delayer(singletone):
             self.loop.call_at(timestamp, self._execute_scheduled_tasks, timestamp)
     
     def _execute_scheduled_tasks(self, timestamp):
+        if DEBUG:
+            print('executed scheduled tasks', self.scheduled_tasks[timestamp])
         if timestamp in self.scheduled_tasks:
             tasks = self.scheduled_tasks[timestamp]
             for priority, func in tasks:
                 try:
-                    if asyncio.iscoroutinefunction(func):
-                        self.loop.create_task(func())
+                    if asyncio.iscoroutine(func):
+                        _ = self.loop.create_task(func)
                     else:
                         func()
                 except Exception as e:
-                    logger.instance.log('Error executing scheduled task:', e)
+                    logger.instance.log('Error executing scheduled task:', str(e))
             del self.scheduled_tasks[timestamp]
 
     async def cancelScheduled(self, time: datetime):

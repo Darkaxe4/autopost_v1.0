@@ -12,6 +12,6 @@ if os.path.isfile(dotenv_file):
 
 BOT_TOKEN = os.getenv("TG_BOT_TOKEN")
 BOT_NICKNAME = os.getenv("TG_BOT_NICKNAME")
-TARGET_CHANNEL = os.getenv("TARGET_CHANNEL")
+TARGET_CHANNEL = int(os.getenv("TARGET_CHANNEL"))
 
 DEBUG = os.getenv("DEBUG")

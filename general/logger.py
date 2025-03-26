@@ -1,6 +1,8 @@
+from functools import wraps
 from general.utils import singletone
 from general.config_parser import parser
 import os
+from typing import Callable
 #--------------------------#logger#---------------------------------------------------#
 
 import datetime
@@ -57,7 +59,8 @@ class logger(singletone):
 
 
 
-def push_to_log(func):
+def push_to_log(func: Callable):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             result = func(*args, **kwargs)
